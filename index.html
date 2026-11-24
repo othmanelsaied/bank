@@ -8,7 +8,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script> 
+ <script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&family=Almarai:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Noto+Naskh+Arabic:wght@400;600&family=Amiri:wght@400;700&display=swap">
 <style>
@@ -603,72 +605,109 @@ function openSet(){
  $('smm').onchange=function(){PREF.m=this.value;applyPref()};$('smf').onchange=function(){PREF.f=this.value;applyPref()};$('sms').onchange=function(){PREF.s=this.value;applyPref()};
 }
 
-/* ===== الاتصال والبدء ===== */
 var WHY='';
+var fbDb=null;
 function status(){var e=$('cs');
- if(MODE==='local'){e.innerHTML='⚠ وضع محلي - البيانات على هذا الجهاز فقط (غير مشتركة)'+(WHY?' · '+esc(WHY):'')+' <button class="b s" id="rcn">🔄 إعادة المحاولة</button>';e.className='chip wa'}
- else if(!CAN){e.textContent='👁 عرض فقط - الاتصال مشترك';e.className='chip wa'}
- else{e.textContent='● متصل - البيانات مشتركة ومحدّثة تلقائيًا';e.className='chip ok'}
- var lcN=Object.keys(lsGet('txns')).length+Object.keys(lsGet('banks')).length;
- if(MODE==='shared'&&CAN&&lcN>0)e.innerHTML+=' <button class="b s" id="mig">⬆ نقل البيانات المحلية ('+lcN+') إلى المشترك</button>';
- document.body.classList.toggle('ro',!CAN)}
-async function tryShared(){
- if(typeof claude==='undefined'||!claude.use){WHY='الصفحة مفتوحة خارج claude.ai (ملف محلي أو GitHub بدون إعداد // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+  if(MODE==='local'){e.innerHTML='⚠ وضع محلي - البيانات على هذا الجهاز فقط (غير مشتركة)'+(WHY?' · '+esc(WHY):'')+' <button class="b s" id="rcn">🔄 إعادة المحاولة</button>';e.className='chip wa'}
+  else if(!CAN){e.textContent='👁 عرض فقط - الاتصال مشترك';e.className='chip wa'}
+  else{e.textContent='● متصل - البيانات مشتركة ومحدثة تلقائياً';e.className='chip ok'}
+  var lcn=Object.keys(lsGet('txns')).length+Object.keys(lsGet('banks')).length;
+  if(MODE==='shared'&&CAN&&lcn>0)e.innerHTML+=' <button class="b s" id="mig">⬆ نقل البيانات المحلية ('+lcn+') إلى المشترك</button>';
+  document.body.classList.toggle('ro',!CAN)}
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDvZkZptv9vPGps1x7BLdQKSc741yJDfBU",
-  authDomain: "bank-c52d5.firebaseapp.com",
-  projectId: "bank-c52d5",
-  storageBucket: "bank-c52d5.firebasestorage.app",
-  messagingSenderId: "671013474672",
-  appId: "1:671013474672:web:89d545b0fde058f8cc3fb5",
-  measurementId: "G-YKRQ89C9ZN"
+async function tryShared(){
+  try{
+    if(!window.firebase){WHY='لم تُحمّل مكتبة Firebase من الإنترنت';return false}
+    var firebaseConfig={
+      apiKey:"AIzaSyDvZkZptv9vPGps1x7BLdQKSc741yJdFBU",
+      authDomain:"://firebaseapp.com",
+      projectId:"bank-c52d5",
+      storageBucket:"bank-c52d5.firebasestorage.app",
+      messagingSenderId:"671013474672",
+      appId:"1:671013474672:web:89d545b0fde058f8cc3fb5",
+      measurementId:"G-YKRQ89C9ZN"
+    };
+    if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+    fbDb=firebase.firestore();
+    await fbDb.collection('banks').limit(1).get();
+    MODE='shared';WHY='';CAN=true;USR=null;UID='';
+    return true;
+  }catch(e){WHY='خطأ في الاتصال: '+((e&&e.message)||e);return false}
+}
+
+store={
+  _unsubs:[],
+  watch:function(col,cb){
+    if(MODE!=='shared'||!fbDb){
+      var m=lsGet(col);cb(Object.keys(m).map(function(k){return Object.assign({id:k},m[k])}));
+      return;
+    }
+    var unsub=fbDb.collection(col).onSnapshot(function(snap){
+      var arr=[];
+      snap.forEach(function(doc){arr.push(Object.assign({id:doc.id},doc.data()))});
+      cb(arr);
+    },function(err){toast('خطأ مزامنة: '+err.message,'er')});
+    this._unsubs.push(unsub);
+  },
+  add:async function(col,data){
+    var obj=Object.assign({},data);delete obj.id;
+    if(MODE!=='shared'||!fbDb){
+      var id='loc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      var m=lsGet(col);m[id]=obj;lsSet(col,m);
+      this.watch(col,col==='banks'?function(a){S.banks=a;render()}:function(a){S.txns=a.sort(function(x,y){return(y.ts||0)-(x.ts||0)});render()});
+      return {id:id};
+    }
+    var ref=await fbDb.collection(col).add(obj);
+    return {id:ref.id};
+  },
+  put:async function(col,id,data){
+    var obj=Object.assign({},data);delete obj.id;
+    if(MODE!=='shared'||!fbDb){
+      var m=lsGet(col);if(m[id])Object.assign(m[id],obj);lsSet(col,m);
+      this.watch(col,col==='banks'?function(a){S.banks=a;render()}:function(a){S.txns=a.sort(function(x,y){return(y.ts||0)-(x.ts||0)});render()});
+      return;
+    }
+    await fbDb.collection(col).doc(id).set(obj,{merge:true});
+  },
+  del:async function(col,id){
+    if(MODE!=='shared'||!fbDb){
+      var m=lsGet(col);delete m[id];lsSet(col,m);
+      this.watch(col,col==='banks'?function(a){S.banks=a;render()}:function(a){S.txns=a.sort(function(x,y){return(y.ts||0)-(x.ts||0)});render()});
+      return;
+    }
+    await fbDb.collection(col).doc(id).delete();
+  }
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);)';return false}
- var d=null;try{d=await claude.use('db')}catch(e){WHY='خطأ في الاتصال: '+((e&&e.message)||e);return false}
- if(!d){WHY='claude.ai لم يوفّر قاعدة البيانات لهذا العرض - تأكد أنك مسجّل الدخول وتفتح الرابط من claude.ai مباشرة';return false}
- MODE='shared';dbx=d;WHY='';CAN=true;USR=null;UID='';
- try{USR=await claude.use('user');if(USR){UID=(await USR.id())||'';var c=await USR.can('data.write');CAN=(c!==false)}}catch(e){}
- return true;
-}
 function startWatch(){
- subs={};
- store.watch('banks',function(a){S.banks=a.sort(function(x,y){return (x.ts||0)-(y.ts||0)});render()});
- store.watch('txns',function(a){S.txns=a.sort(function(x,y){return (y.ts||0)-(x.ts||0)});render()});
+  store._unsubs.forEach(function(u){try{u()}catch(e){}});store._unsubs=[];
+  store.watch('banks',function(a){S.banks=a;render()});
+  store.watch('txns',function(a){S.txns=a.sort(function(x,y){return (y.ts||0)-(x.ts||0)});render()});
 }
 async function connect(){await tryShared();status();startWatch()}
 function migrate(){
- ask('نقل بيانات هذا الجهاز (البنوك والحركات) إلى القاعدة المشتركة؟ تُحذف النسخة المحلية بعد نجاح النقل.',async function(){
-  try{
-   var lb=lsGet('banks'),lt=lsGet('txns'),map={},nb=0,nt=0,names={};
-   S.banks.forEach(function(b){names[(b.name||'').trim().toLowerCase()]=b.id});
-   for(var k in lb){var b=Object.assign({},lb[k]),key=(b.name||'').trim().toLowerCase();if(names[key]){map[k]=names[key];continue}var r=await store.add('banks',b);map[k]=r.id;names[key]=r.id;nb++}
-   for(var j in lt){var t=Object.assign({},lt[j]);t.bankId=map[t.bankId]||t.bankId;await store.add('txns',t);nt++}
-   try{localStorage.removeItem('tm_banks');localStorage.removeItem('tm_txns')}catch(e){}
-   cache={};toast('✔ تم نقل '+nb+' بنك و'+nt+' حركة إلى القاعدة المشتركة','ok');AU('نقل بيانات محلية','',nb+' بنك / '+nt+' حركة');status();
-  }catch(e){toast('تعذر النقل: '+((e&&e.code)||'')+' '+((e&&e.message)||''),'er')}
- });
+  ask('نقل بيانات هذا الجهاز (البنوك والحركات) إلى القاعدة المشتركة؟ تُحذف النسخة المحلية بعد نجاح النقل',async function(){
+    try{
+      var lb=lsGet('banks'),lt=lsGet('txns'),map={},nb=0,nt=0,names={};
+      S.banks.forEach(function(b){names[(b.name||'').trim().toLowerCase()]=b.id});
+      for(var k in lb){var b=Object.assign({},lb[k]),key=(b.name||'').trim().toLowerCase();if(names[key]){map[k]=names[key];continue}var r=await store.add('banks',b);map[k]=r.id;names[key]=r.id;nb++}
+      for(var j in lt){var t=Object.assign({},lt[j]);t.bankId=map[t.bankId]||t.bankId;await store.add('txns',t);nt++}
+      try{localStorage.removeItem('tm_banks');localStorage.removeItem('tm_txns')}catch(e){}
+      cache={};toast('✓ تم نقل '+nb+' بنك و'+nt+' حركة إلى القاعدة المشتركة','ok');AU('نقل بيانات محلية','',nb+' بنك / '+nt+' حركة');status();
+    }catch(e){toast('تعذّر النقل: '+((e&&e.code)||'')+' '+((e&&e.message)||''),'er')}
+  });
 }
 function init(){
- $('nvb').innerHTML=NAV.map(function(x){return '<button class="ni'+(x[0]==='dash'?' on':'')+'" data-p="'+x[0]+'">'+x[1]+' '+x[2]+'</button>'}).join('');
- $('nvb').addEventListener('click',function(e){var b=e.target.closest('.ni');if(b)go(b.dataset.p)});
- $('nf').innerHTML=fHTML(TF,'n_');$('bf').innerHTML=fHTML(BF,'b_');wire('n_');resetNew();
- $('stg').onclick=openSet;
- bindFilters();applyPref();go('dash');
- $('cs').addEventListener('click',function(e){
-  if(e.target.closest('#rcn')){toast('جاري إعادة المحاولة...');connect().then(function(){toast(MODE==='shared'?'✔ تم الاتصال بالقاعدة المشتركة':'لم ينجح الاتصال: '+WHY,MODE==='shared'?'ok':'er')})}
-  else if(e.target.closest('#mig'))migrate();
- });
- connect().catch(function(e){toast('تعذر الاتصال: '+e.message,'er')});
+  $('nvb').innerHTML=NAV.map(function(x){return '<button class="ni'+(x[0]==='dash'?' on':'')+'" data-p="'+x[0]+'">'+x[1]+' '+x[2]+'</button>'}).join('');
+  $('nvb').addEventListener('click',function(e){var b=e.target.closest('.ni');if(b)go(b.dataset.p)});
+  $('nf').innerHTML=fHTML(TF,'n_');$('bf').innerHTML=fHTML(BF,'b_');wire('n_');resetNew();
+  $('stg').onclick=openSet;
+  bindFilters();applyPref();go('dash');
+  $('cs').addEventListener('click',function(e){
+    if(e.target.closest('#rcn')){toast('جارٍ إعادة المحاولة...');connect().then(function(){toast(MODE==='shared'?'✓ تم الاتصال بالقاعدة المشتركة':'لم ينجح الاتصال: '+WHY,MODE==='shared'?'ok':'er')})}
+    else if(e.target.closest('#mig'))migrate();
+  });
+  connect().catch(function(e){toast('تعذّر الاتصال: '+e.message,'er')});
 }
 init();
 })();
