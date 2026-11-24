@@ -613,7 +613,27 @@ function status(){var e=$('cs');
  if(MODE==='shared'&&CAN&&lcN>0)e.innerHTML+=' <button class="b s" id="mig">⬆ نقل البيانات المحلية ('+lcN+') إلى المشترك</button>';
  document.body.classList.toggle('ro',!CAN)}
 async function tryShared(){
- if(typeof claude==='undefined'||!claude.use){WHY='الصفحة مفتوحة خارج claude.ai (ملف محلي أو GitHub بدون إعداد Firebase)';return false}
+ if(typeof claude==='undefined'||!claude.use){WHY='الصفحة مفتوحة خارج claude.ai (ملف محلي أو GitHub بدون إعداد // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDvZkZptv9vPGps1x7BLdQKSc741yJDfBU",
+  authDomain: "bank-c52d5.firebaseapp.com",
+  projectId: "bank-c52d5",
+  storageBucket: "bank-c52d5.firebasestorage.app",
+  messagingSenderId: "671013474672",
+  appId: "1:671013474672:web:89d545b0fde058f8cc3fb5",
+  measurementId: "G-YKRQ89C9ZN"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);)';return false}
  var d=null;try{d=await claude.use('db')}catch(e){WHY='خطأ في الاتصال: '+((e&&e.message)||e);return false}
  if(!d){WHY='claude.ai لم يوفّر قاعدة البيانات لهذا العرض - تأكد أنك مسجّل الدخول وتفتح الرابط من claude.ai مباشرة';return false}
  MODE='shared';dbx=d;WHY='';CAN=true;USR=null;UID='';
